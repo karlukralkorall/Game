@@ -4,8 +4,9 @@
 #include <opencv2/opencv.hpp>
 #include <math.h>
 #include <cstdlib>
-
+#define PI 3.1415926535f
 bool is_shut = false; //global, so bad!
+
 
 struct Bullet
 {
@@ -20,11 +21,35 @@ struct Enemy
 {
 	float x;
 	float y;
-	float sin;
-	float cos;
+	float Vx;
+	float Vy;
+	float angle;
+	//float sin;
+	//float cos;
 	int radius;
 	bool timeToDie;
 	//std::vector<float> dist_to_bullet;
+};
+
+bool is_collision(const Enemy& a, const Enemy& b)
+{
+	float dist = a.radius + b.radius;
+	dist *= dist;
+	return dist >= (pow((a.x - b.x), 2) + pow((a.y - b.y), 2)) ? true : false;
+};
+
+void collision(Enemy& a, Enemy& b)
+{
+	if ((a.x*b.x + a.y*b.y) > 0)
+	{
+		float fi = /*PI / 2 - */atanf((b.y - a.y) / (a.x - b.x));//((a.y - b.y)/(a.x - b.x));//a.angle;
+
+		a.Vx = (a.Vx*cosf(a.angle - fi)*(a.radius - b.radius) + 2 * b.radius * 3 * cosf(b.angle - fi))*(cosf(fi)) / (a.radius + b.radius) + 3 * sinf(a.angle - fi)*cosf(fi + PI / 2);
+		a.Vy = (a.Vx*cosf(a.angle - fi)*(a.radius - b.radius) + 2 * b.radius * 3 * cosf(b.angle - fi))*(sinf(fi)) / (a.radius + b.radius) + 3 * sinf(a.angle - fi)*sinf(fi + PI / 2);
+
+		b.Vx = (b.Vx*cosf(b.angle - fi)*(b.radius - a.radius) + 2 * a.radius * 3 * cosf(a.angle - fi))*(cosf(fi)) / (b.radius + a.radius) + 3 * sinf(b.angle - fi)*cosf(fi + PI / 2);
+		b.Vy = (b.Vx*cosf(b.angle - fi)*(b.radius - a.radius) + 2 * a.radius * 3 * cosf(a.angle - fi))*(sinf(fi)) / (b.radius + a.radius) + 3 * sinf(b.angle - fi)*sinf(fi + PI / 2);
+	}
 };
 
 void mouseCall(int event, int x, int y, int flags, void* userdata)
@@ -158,18 +183,36 @@ int main()
 		}
 
 		//Enemyes
-		if (time_counter % 1000 == 0) //ADD enemyes
+		if (time_counter % 1500 == 0) //ADD enemyes
 		{
 			Enemy temp_enemy;
 			temp_enemy.x = (float)(rand() % 1000);
 			temp_enemy.y = (float)(rand() % 500);
 			
-			float ran_ang = (float)(rand() % 628)/10.f; 
-			temp_enemy.sin = sinf(ran_ang);
-			temp_enemy.cos = cosf(ran_ang);
+			int ran_deg = rand() % 360;//(float)(rand() % 628)/10.f; 
+			float ran_ang = (ran_deg*PI) / 180;
+			//ran_ang = fmod(ran_ang, PI);
+			std::cout << "ran_ang = " << ran_ang << "\n";
+			//temp_enemy.sin = sinf(ran_ang);
+			//temp_enemy.cos = cosf(ran_ang);
+			temp_enemy.angle = ran_ang;
+			temp_enemy.Vx = 3.f*cosf(temp_enemy.angle);
+			temp_enemy.Vy = 3.f*sinf(temp_enemy.angle);
 			temp_enemy.timeToDie = false;
 			temp_enemy.radius = 20;
-			enemyes.push_back(temp_enemy);
+			bool born = true;
+			auto born_it = enemyes.begin();
+			while (born_it != enemyes.end())
+			{
+				if (is_collision(*born_it, temp_enemy))
+				{
+					born = false;
+					std::cout << "COLLISION\n";
+					break;
+				}
+				++born_it;
+			}
+			if (born == true) enemyes.push_back(temp_enemy);
 
 		}//////////////////////////////
 
@@ -181,10 +224,16 @@ int main()
 				////////////////////////////moving calculate
 				if (time_counter % 7 == 0)
 				{
-					(*en_it).x = (*en_it).x + 3.5f*(*en_it).cos;
-					(*en_it).y = (*en_it).y + 3.5f*(*en_it).sin;
-					(*en_it).x = (float)((1000 + (int)(*en_it).x) % 1000);
-					(*en_it).y = (float)((500 + (int)(*en_it).y) % 500);
+					(*en_it).x = (*en_it).x + (*en_it).Vx;//3.5f*(*en_it).cos;
+					(*en_it).y = (*en_it).y + (*en_it).Vy;//3.5f*(*en_it).sin;
+					if((*en_it).x > 0)
+						(*en_it).x = (float)((1000 + (int)(*en_it).x) % 1000);
+					else if ((*en_it).x < 0)
+						(*en_it).x = (float)((1000 - 1) % 1000);
+					if((int)(*en_it).y > 0)
+						(*en_it).y = (float)((500 + (int)(*en_it).y) % 500);
+					else if((int)(*en_it).y < 0)
+						(*en_it).y = (float)((500 + - 1) % 500);
 				}
 				///////////////////////////////
 
@@ -226,23 +275,48 @@ int main()
 				{
 
 
-					float father_angle = asinf((*en_it).sin);
-					float child_angle = fmod((father_angle + 3.14f/6.f), 6.28);
-					father_angle = fmod((father_angle - 3.14f / 6.f), 6.28);
-					(*en_it).sin = sinf(father_angle);
-					(*en_it).cos = cosf(father_angle);
-					(*en_it).x += 10*(*en_it).cos;
-					(*en_it).y += 10*(*en_it).sin;
+					//float father_angle = asinf((*en_it).sin);
+					//float child_angle = fmod((father_angle + 3.14f/6.f), 6.28);
+					float fan = 45 * PI / 180;
+					float chan = (-45) * PI / 180;
+					std::cout << "(*en_it).angle = " << (*en_it).angle << "\n";
+					(*en_it).angle += fan;
+					std::cout << "(*en_it).angle = " << (*en_it).angle << "\n";
+					(*en_it).Vx = 3*cosf((*en_it).angle);
+					(*en_it).Vy = 3*sinf((*en_it).angle);
+					//(*en_it).sin = sinf(father_angle);
+					//(*en_it).cos = cosf(father_angle);
+					(*en_it).x += 7*(*en_it).Vx;
+					(*en_it).y += 7*(*en_it).Vy;
 
 					Enemy t_en1;
-					t_en1.sin = sinf(child_angle);
-					t_en1.cos = cosf(child_angle);
-					t_en1.x = (*en_it).x + 10*t_en1.cos;
-					t_en1.y = (*en_it).y + 10*t_en1.sin;
+					//t_en1.sin = sinf(child_angle);
+					//t_en1.cos = cosf(child_angle);
+					t_en1.angle = (*en_it).angle - fan + chan;
+					std::cout << "t_en1.angle = " << t_en1.angle << "\n";
+					t_en1.Vx = 3*cosf(t_en1.angle);
+					t_en1.Vy = 3*sinf(t_en1.angle);
+					t_en1.x = (*en_it).x - (*en_it).Vx + 7*t_en1.Vx;
+					t_en1.y = (*en_it).y - (*en_it).Vy + 7*t_en1.Vy; //7 is minimu for deete collision
 					t_en1.radius = 10;
 					t_en1.timeToDie = false;
+///////////////
+					bool bornch = true;
+					auto bornch_it = enemyes.begin();
+					while (bornch_it != enemyes.end())
+					{
+						if (is_collision(*bornch_it, t_en1))
+						{
+							bornch = false;
+							std::cout << "COLLISION\n";
+							break;
+						}
+						++bornch_it;
+					}
+					if (bornch == true) child_en.push_back(t_en1);
+///////////////
 
-					child_en.push_back(t_en1);
+					//child_en.push_back(t_en1);
 					//enemyes.push_back(t_en1);
 					std::cout << "PUSH CHILD \n";
 					push_child_anamy = false;
@@ -282,59 +356,8 @@ int main()
 			auto bulk_temp_it = bulk_it + 1;
 			while (bulk_temp_it != enemyes.end())
 			{
-				float dist = sqrt(pow(((*bulk_it).x - (*bulk_temp_it).x), 2) + pow(((*bulk_it).y - (*bulk_temp_it).y), 2));
-				if ((*bulk_temp_it).radius == (*bulk_it).radius && (*bulk_it).radius == 10)
-				{
-					if (dist < 10)
-					{
-						float tm_cos = (*bulk_it).cos;
-						float tm_sin = (*bulk_it).sin;
-						(*bulk_it).cos = (*bulk_temp_it).cos;
-						(*bulk_it).sin = (*bulk_temp_it).sin;
-						(*bulk_temp_it).cos = tm_cos;
-						(*bulk_temp_it).sin = tm_sin;
-
-						(*bulk_temp_it).x += 10*(*bulk_temp_it).cos;
-						(*bulk_temp_it).y += 10 * (*bulk_temp_it).sin;
-						(*bulk_it).x += 10 * (*bulk_it).cos;
-						(*bulk_it).y += 10 * (*bulk_it).sin;
-					}
-				}
-				else if ((*bulk_temp_it).radius == (*bulk_it).radius && (*bulk_it).radius == 20)
-				{
-					if (dist < 40)
-					{
-						float tm_cos = (*bulk_it).cos;
-						float tm_sin = (*bulk_it).sin;
-						(*bulk_it).cos = (*bulk_temp_it).cos;
-						(*bulk_it).sin = (*bulk_temp_it).sin;
-						(*bulk_temp_it).cos = tm_cos;
-						(*bulk_temp_it).sin = tm_sin;
-
-						(*bulk_temp_it).x += 10 * (*bulk_temp_it).cos;
-						(*bulk_temp_it).y += 10 * (*bulk_temp_it).sin;
-						(*bulk_it).x += 10 * (*bulk_it).cos;
-						(*bulk_it).y += 10 * (*bulk_it).sin;
-					}
-				}
-				else if ((*bulk_temp_it).radius != (*bulk_it).radius)
-				{
-					if (dist < 30)
-					{
-						float tm_cos = (*bulk_it).cos;
-						float tm_sin = (*bulk_it).sin;
-						(*bulk_it).cos = (*bulk_temp_it).cos;
-						(*bulk_it).sin = (*bulk_temp_it).sin;
-						(*bulk_temp_it).cos = tm_cos;
-						(*bulk_temp_it).sin = tm_sin;
-
-						(*bulk_temp_it).x += 10 * (*bulk_temp_it).cos;
-						(*bulk_temp_it).y += 10 * (*bulk_temp_it).sin;
-						(*bulk_it).x += 10 * (*bulk_it).cos;
-						(*bulk_it).y += 10 * (*bulk_it).sin;
-					}
-				}
-
+				if (is_collision(*bulk_temp_it, *bulk_it))
+					collision(*bulk_temp_it, *bulk_it);
 				++bulk_temp_it;
 			}
 			++bulk_it;
