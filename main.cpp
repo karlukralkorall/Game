@@ -21,8 +21,9 @@ struct Enemy
 {
 	float x;
 	float y;
-	float Vx;
-	float Vy;
+	//float Vx;
+	//float Vy;
+	float V;
 	float angle;
 	//float sin;
 	//float cos;
@@ -40,16 +41,50 @@ bool is_collision(const Enemy& a, const Enemy& b)
 
 void collision(Enemy& a, Enemy& b)
 {
-	if ((a.x*b.x + a.y*b.y) > 0)
-	{
-		float fi = /*PI / 2 - */atanf((b.y - a.y) / (a.x - b.x));//((a.y - b.y)/(a.x - b.x));//a.angle;
+	//if ((a.x*b.x + a.y*b.y) > 0)
+	//{
+		float Teta = atanf(((float)b.x - (float)a.x)/((float)b.y - (float)a.y));
+		std::cout << "Teta = " << Teta*180.f/PI << "\n";
+		float Alfa = a.angle;
+		float Beta = b.angle;
+		float m1 = (float)a.radius;// == 20 ? 500 : 100;//a.radius;
+		float m2 = (float)b.radius;// == 20 ? 500 : 100;//b.radius;
 
-		a.Vx = (a.Vx*cosf(a.angle - fi)*(a.radius - b.radius) + 2 * b.radius * 3 * cosf(b.angle - fi))*(cosf(fi)) / (a.radius + b.radius) + 3 * sinf(a.angle - fi)*cosf(fi + PI / 2);
-		a.Vy = (a.Vx*cosf(a.angle - fi)*(a.radius - b.radius) + 2 * b.radius * 3 * cosf(b.angle - fi))*(sinf(fi)) / (a.radius + b.radius) + 3 * sinf(a.angle - fi)*sinf(fi + PI / 2);
+		//float U1y = (2 * m2*b.V*cosf(PI + Teta - Beta) + a.V*cosf(Alfa - Teta)*(m1 - m2))*cosf(Teta) / (m1 + m2) + a.V*sinf(Alfa - Teta)*cosf(PI / 2 + Teta);
+		//float U1x = (2 * m2*b.V*cosf(PI + Teta - Beta) + a.V*cosf(Alfa - Teta)*(m1 - m2))*sinf(Teta) / (m1 + m2) + a.V*sinf(Alfa - Teta)*sinf(PI / 2 + Teta);
 
-		b.Vx = (b.Vx*cosf(b.angle - fi)*(b.radius - a.radius) + 2 * a.radius * 3 * cosf(a.angle - fi))*(cosf(fi)) / (b.radius + a.radius) + 3 * sinf(b.angle - fi)*cosf(fi + PI / 2);
-		b.Vy = (b.Vx*cosf(b.angle - fi)*(b.radius - a.radius) + 2 * a.radius * 3 * cosf(a.angle - fi))*(sinf(fi)) / (b.radius + a.radius) + 3 * sinf(b.angle - fi)*sinf(fi + PI / 2);
-	}
+		//float U2y = (2 * m1*a.V*cosf(Alfa - Teta) + b.V*cosf(PI + Teta - Beta)*(m2 - m1))*cosf(Teta) / (m1 + m2) + b.V*sinf(PI + Teta - Beta)*cosf(PI / 2 + Teta);
+		//float U2x = (2 * m1*a.V*cosf(Alfa - Teta) + b.V*cosf(PI + Teta - Beta)*(m2 - m1))*sinf(Teta) / (m1 + m2) + b.V*sinf(PI + Teta - Beta)*sinf(PI / 2 + Teta);
+
+		float U1y = (2 * m2*b.V*cosf(Beta - Teta) + a.V*cosf(Alfa - Teta)*(m1 - m2))*cosf(Teta) / (m1 + m2) + a.V*sinf(Alfa - Teta)*cosf((PI / 2) + Teta);
+		float U1x = (2 * m2*b.V*cosf(Beta - Teta) + a.V*cosf(Alfa - Teta)*(m1 - m2))*sinf(Teta) / (m1 + m2) + a.V*sinf(Alfa - Teta)*sinf((PI / 2) + Teta);
+		std::cout << "U1y = " << U1y << " U1x = " << U1x << "\n";
+
+		float U2y = (2 * m1*a.V*cosf(Alfa - Teta) + b.V*cosf(Beta - Teta)*(m2 - m1))*cosf(Teta) / (m1 + m2) + b.V*sinf(Beta - Teta)*cosf(PI / 2 + Teta);
+		float U2x = (2 * m1*a.V*cosf(Alfa - Teta) + b.V*cosf(Beta - Teta)*(m2 - m1))*sinf(Teta) / (m1 + m2) + b.V*sinf(Beta - Teta)*sinf(PI / 2 + Teta);
+		std::cout << "U2y = " << U2y << " U2x = " << U2x << "\n";
+
+		std::cout << "a.angle = " << a.angle*180.f / PI << "  ";
+		std::cout << "b.angle = " << b.angle*180.f / PI << "\n";
+		std::cout << "---------------------"<< "\n";
+		//a.angle = atanf(U1x / U1y); std::cout << "a.angle = " << a.angle*180.f/PI << "  ";
+		//b.angle = atanf(U2x / U2y); std::cout << "b.angle = " << b.angle*180.f/PI << "\n";
+
+
+		a.V = sqrt(pow(U1x, 2) + pow(U1y, 2)); std::cout << "a.V = " << a.V << "  ";
+		b.V = sqrt(pow(U2x, 2) + pow(U2y, 2)); std::cout << "b.V = " << b.V << "\n";
+
+		a.angle = asinf(U1x / a.V); std::cout << "a.angle = " << a.angle*180.f / PI << "  ";
+		b.angle = asinf(U2x / b.V); std::cout << "b.angle = " << b.angle*180.f / PI << "\n";
+
+
+		a.x += 3.f*a.V*sinf(a.angle);
+		a.y += 3.f*a.V*cosf(a.angle);
+
+		b.x += 3.f*b.V*sinf(b.angle);
+		b.y += 3.f*b.V*cosf(b.angle);
+		std::cout << "=======================" << "\n";
+	//}
 };
 
 void mouseCall(int event, int x, int y, int flags, void* userdata)
@@ -62,6 +97,9 @@ void mouseCall(int event, int x, int y, int flags, void* userdata)
 			break;
 		case CV_EVENT_LBUTTONDOWN :
 			is_shut = true;
+			break;
+		case CV_EVENT_RBUTTONDOWN :
+			std::cout << "mouse angle is " << atanf((float)x / (float)y)*180.f/PI << " degrees\n";
 			break;
 	}
 }
@@ -88,6 +126,8 @@ int main()
 	//std::vector<Enemy> child_en;
 	std::vector<Enemy> child_en;
 	auto ch_it = child_en.begin();
+
+	int score = 0;
 
 	int char_number = 0;
 	while (true) //MAIN LOOP
@@ -124,13 +164,13 @@ int main()
 		cvSetMouseCallback("1", mouseCall, &mouse);
 		
 
-		float cosA = (float)((mouse.x - center.x) / sqrt(pow(mouse.x - center.x, 2) + pow(mouse.y - center.y, 2)));
-		float sinA = (float)((mouse.y - center.y) / sqrt(pow(mouse.x - center.x, 2) + pow(mouse.y - center.y, 2)));
+		float sinA = /*(float)*/((mouse.x - center.x) / sqrt(pow(mouse.x - center.x, 2) + pow(mouse.y - center.y, 2)));
+		float cosA = /*(float)*/((mouse.y - center.y) / sqrt(pow(mouse.x - center.x, 2) + pow(mouse.y - center.y, 2)));
 
 		if (sqrt(pow(mouse.x - center.x, 2) + pow(mouse.y - center.y, 2)) >= 20)
 		{
-			gun.x = center.x + 20 * cosA;
-			gun.y = center.y + 20 * sinA;
+			gun.y = center.y + 20.f * cosA;
+			gun.x = center.x + 20.f * sinA;
 		}
 		else
 		{
@@ -157,8 +197,8 @@ int main()
 			bul_it = bullets.begin(); //buulets
 			while (bul_it != bullets.end())
 			{
-				(*bul_it).x = (*bul_it).x + 1.05f * (*bul_it).cos;
-				(*bul_it).y = (*bul_it).y + 1.05f * (*bul_it).sin;
+				(*bul_it).x = (*bul_it).x + 1.05f * (*bul_it).sin;
+				(*bul_it).y = (*bul_it).y + 1.05f * (*bul_it).cos;
 				if ((*bul_it).x == 0 || (*bul_it).x == 999 || (*bul_it).y == 0 || (*bul_it).y == 499)
 				{
 
@@ -190,14 +230,15 @@ int main()
 			temp_enemy.y = (float)(rand() % 500);
 			
 			int ran_deg = rand() % 360;//(float)(rand() % 628)/10.f; 
-			float ran_ang = (ran_deg*PI) / 180;
+			float ran_ang = ((float)ran_deg*PI) / 180.f;
 			//ran_ang = fmod(ran_ang, PI);
 			std::cout << "ran_ang = " << ran_ang << "\n";
 			//temp_enemy.sin = sinf(ran_ang);
 			//temp_enemy.cos = cosf(ran_ang);
 			temp_enemy.angle = ran_ang;
-			temp_enemy.Vx = 3.f*cosf(temp_enemy.angle);
-			temp_enemy.Vy = 3.f*sinf(temp_enemy.angle);
+			//temp_enemy.Vx = 3.f*cosf(temp_enemy.angle);
+			//temp_enemy.Vy = 3.f*sinf(temp_enemy.angle);
+			temp_enemy.V = 3.f;
 			temp_enemy.timeToDie = false;
 			temp_enemy.radius = 20;
 			bool born = true;
@@ -224,8 +265,8 @@ int main()
 				////////////////////////////moving calculate
 				if (time_counter % 7 == 0)
 				{
-					(*en_it).x = (*en_it).x + (*en_it).Vx;//3.5f*(*en_it).cos;
-					(*en_it).y = (*en_it).y + (*en_it).Vy;//3.5f*(*en_it).sin;
+					(*en_it).x += (*en_it).V*sinf((*en_it).angle);//(*en_it).x + (*en_it).Vx;//3.5f*(*en_it).cos;
+					(*en_it).y += (*en_it).V*cosf((*en_it).angle);//(*en_it).y + (*en_it).Vy;//3.5f*(*en_it).sin;
 					if((*en_it).x > 0)
 						(*en_it).x = (float)((1000 + (int)(*en_it).x) % 1000);
 					else if ((*en_it).x < 0)
@@ -267,6 +308,7 @@ int main()
 						{
 							
 							(*en_it).timeToDie = true;
+							++score;
 
 						}
 				
@@ -277,27 +319,28 @@ int main()
 
 					//float father_angle = asinf((*en_it).sin);
 					//float child_angle = fmod((father_angle + 3.14f/6.f), 6.28);
-					float fan = 45 * PI / 180;
-					float chan = (-45) * PI / 180;
+					float fan = 45.f * PI / 180.f;
+					float chan = (-45.f) * PI / 180.f;
 					std::cout << "(*en_it).angle = " << (*en_it).angle << "\n";
 					(*en_it).angle += fan;
 					std::cout << "(*en_it).angle = " << (*en_it).angle << "\n";
-					(*en_it).Vx = 3*cosf((*en_it).angle);
-					(*en_it).Vy = 3*sinf((*en_it).angle);
+					//(*en_it).Vx = 3*cosf((*en_it).angle);
+					//(*en_it).Vy = 3*sinf((*en_it).angle);
 					//(*en_it).sin = sinf(father_angle);
 					//(*en_it).cos = cosf(father_angle);
-					(*en_it).x += 7*(*en_it).Vx;
-					(*en_it).y += 7*(*en_it).Vy;
+					(*en_it).x += 7.f * (*en_it).V * sinf((*en_it).angle);
+					(*en_it).y += 7.f * (*en_it).V * cosf((*en_it).angle);
 
 					Enemy t_en1;
 					//t_en1.sin = sinf(child_angle);
 					//t_en1.cos = cosf(child_angle);
 					t_en1.angle = (*en_it).angle - fan + chan;
 					std::cout << "t_en1.angle = " << t_en1.angle << "\n";
-					t_en1.Vx = 3*cosf(t_en1.angle);
-					t_en1.Vy = 3*sinf(t_en1.angle);
-					t_en1.x = (*en_it).x - (*en_it).Vx + 7*t_en1.Vx;
-					t_en1.y = (*en_it).y - (*en_it).Vy + 7*t_en1.Vy; //7 is minimu for deete collision
+					//t_en1.Vx = 3*cosf(t_en1.angle);
+					//t_en1.Vy = 3*sinf(t_en1.angle);
+					t_en1.V = (*en_it).V;
+					t_en1.x = (*en_it).x - 7.f * (*en_it).V * sinf((*en_it).angle) + 7.f * t_en1.V * sinf(t_en1.angle);
+					t_en1.y = (*en_it).y - 7.f * (*en_it).V * cosf((*en_it).angle) + 7.f * t_en1.V * cosf(t_en1.angle); //7 is minimu for deete collision
 					t_en1.radius = 10;
 					t_en1.timeToDie = false;
 ///////////////
@@ -363,6 +406,7 @@ int main()
 			++bulk_it;
 		}
 
+		cv::putText(screen, std::to_string(score), cv::Point(10,10), 1, 1, cv::Scalar(255,255,255));
 		cv::circle(screen, center, 10, white);
 		cv::line(screen, center, gun, white);
 		cv::imshow("1", screen);
