@@ -5,9 +5,41 @@
 #include <math.h>
 #include <cstdlib>
 #define PI 3.1415926535f
+#define CL_CO 10
 bool is_shut = false; //global, so bad!
 
 
+float get_radianAngle(float x, float y)
+{
+	if (x == 0.f || y == 0.f)
+	{
+		return x == 0.f ? (y > 0 ? 0 : PI) : (y == 0 ? (x > 0 ? PI / 2 : 3 * PI / 4) : 0);
+	}
+	else
+	{
+		if (x > 0.f && y > 0.f)
+		{
+			std::cout << "A\n";
+			return atanf(x / y);
+		}
+		else if (x > 0.f && y < 0.f)
+		{
+			std::cout << "B\n";
+			return atanf(x / y) + PI;
+		}
+		else if (x < 0.f && y > 0.f)
+		{
+			std::cout << "C\n";
+			return atanf(x / y) + 2 * PI;
+		}
+		else if (x < 0.f && y < 0.f)
+		{
+			std::cout << "D\n";
+			return atanf(x / y) + PI;
+		}
+	}
+	return 0.f;
+}
 struct Bullet
 {
 	float x;
@@ -29,22 +61,157 @@ struct Enemy
 	//float cos;
 	int radius;
 	bool timeToDie;
+
+	bool clear;
+	int clear_count;
 	//std::vector<float> dist_to_bullet;
 };
 
 bool is_collision(const Enemy& a, const Enemy& b)
 {
-	float dist = a.radius + b.radius;
-	dist *= dist;
-	return dist >= (pow((a.x - b.x), 2) + pow((a.y - b.y), 2)) ? true : false;
+	//if (a.x > a.radius / 2 && a.x < (1000 - a.radius / 2) && a.y > a.radius / 2 && a.y < (500 - a.radius / 2) &&
+	//	b.x > b.radius / 2 && b.x < (1000 - b.radius / 2) && b.y > b.radius / 2 && b.y < (500 - b.radius / 2))
+	//{
+		float dist = (float)a.radius + (float)b.radius;
+		float real_dist;
+		if (a.x > (float)a.radius  && a.x < (999.f - (float)a.radius ) && a.y >(float)a.radius  && a.y < (499.f - (float)a.radius ) &&
+			b.x > (float)b.radius  && b.x < (999.f - (float)b.radius ) && b.y >(float)b.radius  && b.y < (499.f - (float)b.radius ))
+		{
+			real_dist = (pow((a.x - b.x), 2) + pow((a.y - b.y), 2));
+		}
+		else 
+		{
+			float Ax, Ay, Bx, By;
+			if (a.x < (float)a.radius && b.x >(999.f - (float)b.radius))
+			{
+				Ax = a.x + 999.f;
+				Bx = b.x;
+			}
+			else if (a.x > (999.f - (float)a.radius) && b.x < (float)b.radius)
+			{
+				Ax = a.x - 999.f;
+				Bx = b.x;
+			}
+			else
+			{
+				Ax = a.x;
+				Bx = b.x;
+			}
+
+			if (a.y < (float)a.radius && b.y >(499.f - (float)b.radius))
+			{
+				Ay = a.y + 499.f;
+				By = b.y;
+			}
+			else if (a.y > (499 - (float)a.radius) && b.y < (float)b.radius)
+			{
+				Ay = a.y - 499.f;
+				By = b.y;
+			}
+			else
+			{
+				Ay = a.y;
+				By = b.y;
+			}
+
+
+/*
+			if (b.x < (float)b.radius&& a.x >(999.f - (float)a.radius))
+				Bx = b.x + 999.f;
+			else if (b.x >(999.f - (float)b.radius) && a.x < (float)a.radius)
+				Bx = b.x - 999.f;
+			else Bx = b.x;
+
+			if (b.y < (float)b.radius && a.y >(499.f - (float)a.radius))
+				By = b.y + 499.f;
+			else if (b.y >(499.f - (float)b.radius) && a.y < (float)a.radius)
+				By = b.y - 499.f;
+			else By = b.y; */
+
+			real_dist = (pow((Ax - Bx), 2) + pow((Ay - By), 2));
+		}
+		dist *= dist;
+		return dist > real_dist ? true : false;
+	//}
+
 };
+
+bool can_itBorn(float x, float y, float r, const std::vector<Enemy>& vec)
+{
+	bool born = true;
+	auto it = vec.begin();
+	while (it != vec.end())
+	{
+		if( (pow((x - (*it).x), 2) + pow((y - (*it).y), 2)) <= ((r + (*it).radius)*(r + (*it).radius)) )
+			born = false;
+		++it;
+	}
+	return born;
+}
 
 void collision(Enemy& a, Enemy& b)
 {
-	//if ((a.x*b.x + a.y*b.y) > 0)
+	
+	//if (a.clear == false && b.clear == false)
 	//{
-		float Teta = atanf(((float)b.x - (float)a.x)/((float)b.y - (float)a.y));
-		std::cout << "Teta = " << Teta*180.f/PI << "\n";
+		float Teta;
+		if (a.x > (float)a.radius  && a.x < (999.f - (float)a.radius) && a.y >(float)a.radius  && a.y < (499.f - (float)a.radius) &&
+			b.x >(float)b.radius  && b.x < (999.f - (float)b.radius) && b.y >(float)b.radius  && b.y < (499.f - (float)b.radius))
+		{
+			Teta = /*get_radianAngle((float)b.x - (float)a.x, (float)b.y - (float)a.y);*/atanf(((float)b.x - (float)a.x)/((float)b.y - (float)a.y));
+			std::cout << "Teta = " << Teta*180.f / PI << "\n";
+		}
+		else
+		{
+			float Ax, Ay, Bx, By;
+			if (a.x < (float)a.radius && b.x >(999.f - (float)b.radius))
+			{
+				Ax = a.x + 999.f;
+				Bx = b.x;
+			}
+			else if (a.x > (999.f - (float)a.radius) && b.x < (float)b.radius)
+			{
+				Ax = a.x - 999.f;
+				Bx = b.x;
+			}
+			else
+			{
+				Ax = a.x;
+				Bx = b.x;
+			}
+
+			if (a.y < (float)a.radius && b.y >(499.f - (float)b.radius))
+			{
+				Ay = a.y + 499.f;
+				By = b.y;
+			}
+			else if (a.y > (499 - (float)a.radius) && b.y < (float)b.radius)
+			{
+				Ay = a.y - 499.f;
+				By = b.y;
+			}
+			else
+			{
+				Ay = a.y;
+				By = b.y;
+			}
+
+
+			/*if (b.x < (float)b.radius&& a.x >(999.f - (float)a.radius))
+				Bx = b.x + 999.f;
+			else if (b.x >(999.f - (float)b.radius) && a.x < (float)a.radius)
+				Bx = b.x - 999.f;
+			else Bx = b.x;
+
+			if (b.y < (float)b.radius && a.y >(499.f - (float)a.radius))
+				By = b.y + 499.f;
+			else if (b.y >(499.f - (float)b.radius) && a.y < (float)a.radius)
+				By = b.y - 499.f;
+			else By = b.y;*/
+
+			Teta = atanf((Bx - Ax)/ (By - Ay));/*get_radianAngle(Bx - Ax, By - Ay);*/
+			std::cout << "!!!!!!!!!!!!!!!!Teta = " << Teta*180.f / PI << "\n";
+		}
 		float Alfa = a.angle;
 		float Beta = b.angle;
 		float m1 = (float)a.radius;// == 20 ? 500 : 100;//a.radius;
@@ -74,18 +241,29 @@ void collision(Enemy& a, Enemy& b)
 		a.V = sqrt(pow(U1x, 2) + pow(U1y, 2)); std::cout << "a.V = " << a.V << "  ";
 		b.V = sqrt(pow(U2x, 2) + pow(U2y, 2)); std::cout << "b.V = " << b.V << "\n";
 
-		a.angle = asinf(U1x / a.V); std::cout << "a.angle = " << a.angle*180.f / PI << "  ";
-		b.angle = asinf(U2x / b.V); std::cout << "b.angle = " << b.angle*180.f / PI << "\n";
+		a.angle = get_radianAngle(U1x, U1y); std::cout << "a.angle = " << a.angle*180.f / PI << "  ";
+		b.angle = get_radianAngle(U2x, U2y); std::cout << "b.angle = " << b.angle*180.f / PI << "\n";
 
-
-		a.x += 3.f*a.V*sinf(a.angle);
-		a.y += 3.f*a.V*cosf(a.angle);
-
-		b.x += 3.f*b.V*sinf(b.angle);
-		b.y += 3.f*b.V*cosf(b.angle);
+	//	if (can_itBorn(a.x + 8.f*a.V*sinf(a.angle), a.y + 8.f*a.V*cosf(a.angle), a.radius, enem))
+		//{
+			a.x += a.V*sinf(a.angle);
+			a.y += a.V*cosf(a.angle);
+		//}
+		//else std::cout << "ERROR\n";
+		//if (can_itBorn(b.x + 8.f*b.V*sinf(b.angle), b.y + 8.f*b.V*cosf(b.angle), b.radius, enem))
+		//{
+			b.x += b.V*sinf(b.angle);
+			b.y += b.V*cosf(b.angle);
+		//}
+		//else std::cout << "ERROR\n";
+		a.clear = true;
+		b.clear = true;
 		std::cout << "=======================" << "\n";
 	//}
-};
+
+
+
+}
 
 void mouseCall(int event, int x, int y, int flags, void* userdata)
 {
@@ -139,7 +317,7 @@ int main()
 			time_counter = 0;
 		screen.setTo(black);
 
-		char_number = cv::waitKey(1); //_getch();
+    		char_number = cv::waitKey(1); //_getch();
 
 			switch (char_number) //
 			{
@@ -241,6 +419,9 @@ int main()
 			temp_enemy.V = 3.f;
 			temp_enemy.timeToDie = false;
 			temp_enemy.radius = 20;
+			temp_enemy.clear = false;
+			temp_enemy.clear_count = CL_CO;
+
 			bool born = true;
 			auto born_it = enemyes.begin();
 			while (born_it != enemyes.end())
@@ -276,6 +457,19 @@ int main()
 					else if((int)(*en_it).y < 0)
 						(*en_it).y = (float)((500 + - 1) % 500);
 				}
+				///////////////////////////////
+				//////////////////////////////
+				if ((*en_it).clear == true)
+				{
+					--(*en_it).clear_count;
+					if ((*en_it).clear_count == 0)
+					{
+						(*en_it).clear = false;
+						(*en_it).clear_count = CL_CO;
+					}
+				}
+
+
 				///////////////////////////////
 
 				auto temp_it = bullets.begin();
@@ -343,6 +537,9 @@ int main()
 					t_en1.y = (*en_it).y - 7.f * (*en_it).V * cosf((*en_it).angle) + 7.f * t_en1.V * cosf(t_en1.angle); //7 is minimu for deete collision
 					t_en1.radius = 10;
 					t_en1.timeToDie = false;
+					t_en1.clear = false;
+					t_en1.clear_count = CL_CO;
+						 
 ///////////////
 					bool bornch = true;
 					auto bornch_it = enemyes.begin();
@@ -399,6 +596,8 @@ int main()
 			auto bulk_temp_it = bulk_it + 1;
 			while (bulk_temp_it != enemyes.end())
 			{
+
+
 				if (is_collision(*bulk_temp_it, *bulk_it))
 					collision(*bulk_temp_it, *bulk_it);
 				++bulk_temp_it;
